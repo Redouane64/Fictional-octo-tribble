@@ -25,7 +25,7 @@ server.get("/healthz", (request, reply) => {
   return { ok: true };
 });
 
-// fake API to convert from ticker to usd
+// fake API to convert currency to usd
 server.get(
   "/",
   {
