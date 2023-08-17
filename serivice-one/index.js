@@ -5,7 +5,10 @@ import Fastify from "fastify";
 import axios from "axios";
 
 const server = Fastify({
-  logger: process.env.NODE_ENV === "development",
+  logger: {
+    enabled: process.env.NODE_ENV === "development",
+    level: process.env.NODE_ENV === "development" ? 'debug' : 'warn',
+  },
 });
 
 server.get(
