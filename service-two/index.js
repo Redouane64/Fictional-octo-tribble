@@ -13,8 +13,8 @@ await server.register(import("@fastify/cors"), {
 });
 
 await server.register(import("@fastify/rate-limit"), {
-  max: 1,
-  timeWindow: "1 second",
+  max: 10,
+  timeWindow: "10 seconds",
 });
 
 await server.register(cache, {
@@ -32,16 +32,16 @@ server.get(
     schema: { 
       querystring: { 
         type: 'object', 
-        properties: { from: { type: "string" } },
-        required: ['from'],
+        properties: { to: { type: "string" } },
+        required: ['to'],
       } 
     },
   },
   (request, reply) => {
     return {
-      ticker: "USD",
-      from: request.query["from"],
-      rate: (Math.random() * 100).toFixed(3),
+      base: "USD",
+      to: request.query["to"],
+      rate: Number((Math.random() * 100).toFixed(3)),
     };
   }
 );

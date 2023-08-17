@@ -2,14 +2,17 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import Fastify from "fastify";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 const server = Fastify({
   logger: {
     enabled: process.env.NODE_ENV === "development",
-    level: process.env.NODE_ENV === "development" ? 'debug' : 'warn',
+    level: process.env.NODE_ENV === "development" ? "debug" : "warn",
   },
 });
+
+// simple cache to be used as fallback on API call failure
+const cache = new Map();
 
 server.get(
   "/",
@@ -19,26 +22,51 @@ server.get(
         type: "object",
         properties: {
           currency: { type: "string" },
-          value: { type: "integer" },
+          amount: { type: "integer" },
         },
-        required: ["currency", "value"],
+        required: ["currency", "amount"],
       },
     },
   },
   async (request, reply) => {
-    const response = await axios({
-      method: "GET",
-      url: process.env.CURRENCY_API_URL,
-      params: {
-        from: request.query.currency,
-      },
-    });
+    
+    let response, rate;
+    try {
+      response = await axios({
+        method: "GET",
+        url: process.env.CURRENCY_API_URL,
+        params: {
+          to: request.query.currency,
+        },
+      });
 
-    if (response.status !== 200) reply.status(500);
+      rate = response.data.rate;
+      cache.set(request.query.currency, rate);
+    } catch(error) {
+      if (error instanceof AxiosError) {
+        if (error.code === 'ECONNREFUSED') {
+          server.log.fatal(`unable to connect to exchange service`)
+        } else {
+          server.log.warn(`call to exchange service completed with errors`)
+        }
+      }
+      rate = cache.get(request.query.currency);
+    }
+    
+    if (!rate) {
+      return reply.status(503).send({
+        error: `Service not available`
+      })
+    }
 
-    const rate = response.data.rate;
-    const value = rate * request.query.value;
-    return { rate, value: value.toFixed(3), from: request.query.currency };
+    const amount = request.query.amount / rate;
+
+    return {
+      base: request.query.currency,
+      target: "USD",
+      rate,
+      amount: amount.toFixed(3),
+    };
   }
 );
 
