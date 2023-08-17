@@ -1,37 +1,56 @@
-import dotenv from 'dotenv';
-dotenv.config()
+import dotenv from "dotenv";
+dotenv.config();
 
-import Fastify from 'fastify';
-import cache from '@fastify/caching';
+import Fastify from "fastify";
+import cache from "@fastify/caching";
 
 const server = Fastify({
-  logger: process.env.NODE_ENV === 'development', 
-})
+  logger: process.env.NODE_ENV === "development",
+});
 
-await server.register(import('@fastify/cors'), { 
-  methods: ['GET']
-})
+await server.register(import("@fastify/cors"), {
+  methods: ["GET"],
+});
 
-await server.register(import('@fastify/rate-limit'), {
+await server.register(import("@fastify/rate-limit"), {
   max: 1,
-  timeWindow: '1 second'
-})
+  timeWindow: "1 second",
+});
 
 await server.register(cache, {
   privacy: cache.privacy.NOCACHE,
-})
+});
 
-server.get('/healthz', (request, reply) => {
-  return { ok: true }
-})
+server.get("/healthz", (request, reply) => {
+  return { ok: true };
+});
 
-server.get('/', (request, reply) => {
-  return { ticker: 'USD', rate: (Math.random() * 100).toFixed(3) }
-})
+// fake API to convert from ticker to usd
+server.get(
+  "/",
+  {
+    schema: { 
+      querystring: { 
+        type: 'object', 
+        properties: { from: { type: "string" } },
+        required: ['from'],
+      } 
+    },
+  },
+  (request, reply) => {
+    return {
+      ticker: "USD",
+      from: request.query["from"],
+      rate: (Math.random() * 100).toFixed(3),
+    };
+  }
+);
 
-server.listen({
-  port: process.env.PORT,
-}, (error) => {
-  if (error)
-    throw error
-})
+server.listen(
+  {
+    port: process.env.PORT,
+  },
+  (error) => {
+    if (error) throw error;
+  }
+);
